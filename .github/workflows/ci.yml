@@ -23,7 +23,7 @@ jobs:
         preset: [gcc-debug, clang-debug]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install compilers and Ninja
         run: |
