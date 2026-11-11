@@ -1,0 +1,22 @@
+# Build trees
+/build/
+/out/
+/cmake-build-*/
+
+# Machine-local CMake presets
+/CMakeUserPresets.json
+
+# Compilation database, if you symlink it to the repo root
+/compile_commands.json
+
+# Editor leftovers
+.vscode/
+.idea/
+.cache/
+*.swp
+*~
+
+# Logs and crash dumps
+*.log
+core
+core.*

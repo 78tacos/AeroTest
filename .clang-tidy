@@ -1,0 +1,19 @@
+# Optional. CI does not run clang-tidy. Turn it on locally when you want a second opinion:
+#   clang-tidy -p build/gcc-debug src/loopback_bus.cpp
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  readability-*,
+  modernize-*,
+  cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -misc-non-private-member-variables-in-classes,
+  -readability-identifier-length
+WarningsAsErrors: ''
+HeaderFilterRegex: 'include/aerotest/.+'
+FormatStyle: file

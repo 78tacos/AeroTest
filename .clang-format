@@ -1,0 +1,21 @@
+# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 100
+PointerAlignment: Left
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+AllowShortFunctionsOnASingleLine: Inline
+BreakBeforeBraces: Attach
+SpaceAfterCStyleCast: false
+AlignTrailingComments: true
+
+IncludeCategories:
+  - Regex: '^<gtest/'
+    Priority: 1
+  - Regex: '^"aerotest/'
+    Priority: 2
+  - Regex: '^"'
+    Priority: 3
+  - Regex: '^<'
+    Priority: 4
