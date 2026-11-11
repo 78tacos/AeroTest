@@ -15,9 +15,9 @@ enum class Error {
     NotOpen,         ///< send or receive before a successful open, or after close
     Timeout,         ///< receive found no ready frame
     InvalidArgument, ///< the frame, timeout, or fault spec breaks a documented rule
-    Io,              ///< the operating system rejected a SocketCAN call
+    Io,              ///< a file could not be read, or SocketCAN rejected a call
     FaultInjected,   ///< an armed Error fault told the bus to fail this send
-    NotImplemented   ///< the body is still a step-1 stub
+    NotImplemented   ///< the body is still a stub
 };
 
 /// Stable spelling of `error`. Task T1. The stub returns "unknown".

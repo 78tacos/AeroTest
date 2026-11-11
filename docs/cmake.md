@@ -12,7 +12,7 @@ cmake --build --preset gcc-debug  # compile
 ctest --preset gcc-debug          # run the enabled tests
 ```
 
-Configure is the slow one the first time, because it downloads GoogleTest. Build and test are what you run after each edit. `cmake --list-presets` prints the names, including the descriptions from the JSON.
+Configure is the slow one the first time, because it downloads yaml-cpp, and GoogleTest when tests are on. Build and test are what you run after each edit. `cmake --list-presets` prints the names, including the descriptions from the JSON.
 
 `build/` is gitignored. Delete a preset's directory if a configure gets stuck; the next `--preset` starts clean.
 
@@ -123,7 +123,50 @@ add_library(aerotest
 add_library(aerotest::aerotest ALIAS aerotest)
 ```
 
-The sources are written out on purpose. `file(GLOB ...)` looks convenient and then ignores a `.cpp` you just added until something else forces a reconfigure. Adding a file is a one-line edit here, and the diff shows it.
+The sources are written out on purpose. `file(GLOB ...)` looks convenient and then ignores a `.cpp` you just added until something else forces a reconfigure. Adding a file is a one-line edit here, and the diff shows it. Step 2 adds `scenario_parser.cpp`, `air_data_subsystem.cpp`, `engine_subsystem.cpp`, `scenario_runner.cpp`, and `results_writer.cpp` to this list.
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+  yaml-cpp
+  URL https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.9.0.tar.gz
+  URL_HASH SHA256=25cb043240f828a8c51beb830569634bc7ac603978e0f69d6b63558dadefd49a
+)
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_FORMAT_SOURCE OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(yaml-cpp)
+```
+
+Same mechanism as GoogleTest, placed in the top-level file because the library links it, not only the tests. The URL is the 0.9.0 tag tarball. `URL_HASH` fails the configure if those bytes change.
+
+The five `set(... CACHE BOOL "" FORCE)` lines run *before* `FetchContent_MakeAvailable`, which is what parses yaml-cpp's `CMakeLists.txt`. yaml-cpp defaults to building a small command-line tool and its contrib sources. Both are off here. Its own tests are already off when it is not the top-level project; the `FORCE` keeps a stale cache from turning them back on. Install rules and a clang-format target are off so a configure of AeroTest does not grow extra targets.
+
+```cmake
+target_link_libraries(aerotest PRIVATE yaml-cpp::yaml-cpp)
+```
+
+`yaml-cpp::yaml-cpp` is the namespaced alias, same pattern as `aerotest::aerotest`. `PRIVATE` means the parser's `.cpp` can include `yaml-cpp/yaml.h`, and a target that links `aerotest` does not gain that include path. The static library still pulls yaml-cpp onto the final link line, so the CLI and the tests resolve the yaml-cpp symbols without including the header. Public headers stay free of it. That is why a missing yaml include fails in `scenario_parser.cpp` and nowhere else.
+
+Two follow-up lines exist because yaml-cpp is a real project, not a header.
+
+```cmake
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+set_target_properties(yaml-cpp PROPERTIES CXX_SCAN_FOR_MODULES OFF)
+```
+
+CMake 3.28 can scan C++20 sources for modules. This tree has none. Clang's scanner is a separate `clang-scan-deps` binary that `apt install clang` does not provide, and the build then fails with `CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS-NOTFOUND`. The variable is set off before the fetch. yaml-cpp calls `project()` in a subdirectory, which turns the scan back on, so it is set off again afterwards and the property is pinned on the `yaml-cpp` target it already created. Our `add_library` comes after that second `set`, which is why the order matters.
+
+```cmake
+get_target_property(aerotest_yaml_includes yaml-cpp INTERFACE_INCLUDE_DIRECTORIES)
+set_target_properties(yaml-cpp PROPERTIES
+  INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${aerotest_yaml_includes}"
+)
+```
+
+yaml-cpp 0.9's headers warn under Clang's `-Wsign-conversion` (GCC's `-Wconversion` does not include that one). A system include directory suppresses warnings from those headers, so turning on `AEROTEST_WERROR` does not make a third-party header fail our build. The path is read back from the target instead of being typed out.
 
 The `ALIAS` is the name tests link (`aerotest::aerotest`). The `::` makes a missing target a configure error. A typo of a bare name can quietly become a linker flag instead.
 
@@ -198,7 +241,15 @@ target_link_libraries(aerotest_tests PRIVATE aerotest::aerotest GTest::gtest_mai
 aerotest_set_warnings(aerotest_tests)
 ```
 
-One test binary for everything that does not need a CAN interface. `GTest::gtest_main` is the namespaced target FetchContent creates (an `ALIAS` inside GoogleTest, same pattern as `aerotest::aerotest`). Linking it pulls in gtest and defines `main`. Test files do not write their own `main`.
+One test binary for everything that does not need a CAN interface, including the step-2 tests. `GTest::gtest_main` is the namespaced target FetchContent creates (an `ALIAS` inside GoogleTest, same pattern as `aerotest::aerotest`). Linking it pulls in gtest and defines `main`. Test files do not write their own `main`.
+
+```cmake
+target_compile_definitions(aerotest_tests PRIVATE
+  "AEROTEST_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\""
+)
+```
+
+`CMAKE_SOURCE_DIR` is the source root, the directory that contains `scenarios/`. The quotes are part of the compiler definition, so the test sees a string literal. The parser tests open `scenarios/air_data_smoke.yaml` from that path. The library does not get the definition: a shipped binary should not bake in a build-machine path. The CLI takes the path as an argument instead.
 
 ```cmake
 include(GoogleTest)
@@ -212,7 +263,7 @@ gtest_discover_tests(aerotest_tests
 
 Discovery happens at build time. Renaming a test and running `ctest` without rebuilding leaves CTest holding the old list.
 
-`LABELS "step1"` tags every test in this binary. `DISCOVERY_TIMEOUT 30` is how long CMake waits for `--gtest_list_tests`. The binary only prints names, so it finishes immediately; the timeout is there so a hung binary fails the build instead of hanging it.
+`LABELS "step1"` tags every test in this binary, including the step-2 tests that live in the same executable. The label means "not the vCAN binary". The presets do not filter on it. `DISCOVERY_TIMEOUT 30` is how long CMake waits for `--gtest_list_tests`. The binary only prints names, so it finishes immediately; the timeout is there so a hung binary fails the build instead of hanging it.
 
 ```cmake
 add_executable(aerotest_vcan_tests vcan_bus_test.cpp)
@@ -287,7 +338,7 @@ Reconfigure after a `CMakeLists.txt` edit (`cmake --preset gcc-debug` again). A 
 
 | Command | Effect |
 | --- | --- |
-| `cmake --preset gcc-debug -DAEROTEST_BUILD_TESTS=OFF` | Library and CLI only. No download of GoogleTest. |
+| `cmake --preset gcc-debug -DAEROTEST_BUILD_TESTS=OFF` | Library and CLI only. No download of GoogleTest. yaml-cpp is still downloaded, because the library links it. |
 | `cmake --preset gcc-debug -DAEROTEST_WARNINGS=OFF` | Compiles without the warning set. |
 | `cmake --preset gcc-debug -DAEROTEST_WERROR=ON` | Warnings fail the build. Useful for T1. |
 | `cmake --preset gcc-asan` | Address and undefined-behavior sanitizers, including inside GoogleTest. |

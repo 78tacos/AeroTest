@@ -275,6 +275,8 @@ The runner does not open or close the bus. The caller does. `Report::passed` and
 
 Compare `id`, `id_kind`, `remote_request`, and `data`. Do not compare `timestamp`. The outbound frame's timestamp stays 0 and the loopback stamps the received copy, so `EchoMatchesOnLoopback` fails if you compare that field.
 
+Leave `requirement_id` empty. Step 2's scenario runner copies a requirement id onto the check it stores. These tests do not set one.
+
 `expect_echo`:
 
 - If the bus is closed, record a failure, do not send, and leave the bus closed.

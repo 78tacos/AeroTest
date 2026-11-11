@@ -16,13 +16,26 @@ void print_help() {
                  "Usage:\n"
                  "  aerotest --help\n"
                  "  aerotest --version\n"
+                 "  aerotest run <scenario.yaml>\n"
                  "\n"
-                 "Step 1 does not run scenarios yet. The task list is docs/step-1.md.\n";
+                 "The task lists are docs/step-1.md and docs/step-2.md.\n";
 }
 
 } // namespace
 
 int main(int argc, char** argv) {
+    // `run` is the only command that takes a second argument. It is recognized
+    // so the usage is real. The body is task T5 in docs/step-2.md.
+    if (argc >= 2 && std::string_view{argv[1]} == "run") {
+        if (argc != 3) {
+            std::cerr << "aerotest: usage: aerotest run <scenario.yaml>\n";
+            return 2;
+        }
+        std::cerr << "aerotest: scenario runner is not implemented yet (" << argv[2]
+                  << "). See docs/step-2.md\n";
+        return 2;
+    }
+
     if (argc > 2) {
         std::cerr << "aerotest: unexpected argument '" << argv[2] << "'\n";
         return 2;
