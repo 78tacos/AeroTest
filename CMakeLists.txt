@@ -60,6 +60,38 @@ configure_file(
   @ONLY
 )
 
+# This tree does not use C++20 modules. CMake 3.28 otherwise scans sources for
+# them, and Clang's scan needs clang-scan-deps, which is not part of the CI
+# install. yaml-cpp's own project() call turns the scan on for its target, so
+# the property is forced off again after it is fetched.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+
+# yaml-cpp is linked by the scenario parser. Public headers do not include it.
+# Its tests, tools, contrib, and install rules stay off. docs/cmake.md walks
+# each line. The parse function itself is still a stub.
+include(FetchContent)
+FetchContent_Declare(
+  yaml-cpp
+  URL https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.9.0.tar.gz
+  URL_HASH SHA256=25cb043240f828a8c51beb830569634bc7ac603978e0f69d6b63558dadefd49a
+)
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_FORMAT_SOURCE OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(yaml-cpp)
+# yaml-cpp's project() can turn the scan back on. Set it off again before our
+# targets are created, and pin the property on the target it already created.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+set_target_properties(yaml-cpp PROPERTIES CXX_SCAN_FOR_MODULES OFF)
+# yaml-cpp 0.9 headers trip Clang -Wsign-conversion. Marking the include
+# system keeps that warning out of our build, including under AEROTEST_WERROR.
+get_target_property(aerotest_yaml_includes yaml-cpp INTERFACE_INCLUDE_DIRECTORIES)
+set_target_properties(yaml-cpp PROPERTIES
+  INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${aerotest_yaml_includes}"
+)
+
 # Sources are listed on purpose. GLOB would miss a file you add until a
 # reconfigure, and a new file is easy to forget.
 add_library(aerotest
@@ -69,7 +101,13 @@ add_library(aerotest
   src/socketcan_bus.cpp
   src/fault_injector.cpp
   src/test_runner.cpp
+  src/scenario_parser.cpp
+  src/air_data_subsystem.cpp
+  src/engine_subsystem.cpp
+  src/scenario_runner.cpp
+  src/results_writer.cpp
 )
+target_link_libraries(aerotest PRIVATE yaml-cpp::yaml-cpp)
 # The namespaced name is what tests link, same as an installed package would.
 add_library(aerotest::aerotest ALIAS aerotest)
 

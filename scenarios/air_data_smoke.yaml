@@ -1,0 +1,21 @@
+# Synthetic air-data smoke test. Not a real sensor, not flight data.
+# Ids are decimal: 256 is 0x100 (request), 257 is 0x101 (reply).
+# Reply bytes are little-endian uint16: altitude 100, then airspeed 50.
+
+name: air-data-smoke
+description: Synthetic air-data node replies to a request.
+bus: loopback
+subsystems:
+  - air-data
+steps:
+  - name: request indicated values
+    requirement: REQ-AD-001
+    send:
+      id: 256
+      data: []
+  - name: indicated altitude and airspeed
+    requirement: REQ-AD-001
+    expect:
+      id: 257
+      data: [100, 0, 50, 0]
+      timeout_ms: 20

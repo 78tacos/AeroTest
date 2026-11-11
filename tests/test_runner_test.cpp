@@ -33,6 +33,11 @@ Message frame(std::uint32_t id, std::initializer_list<unsigned int> data) {
 
 } // namespace
 
+TEST(CheckResult, RequirementIdDefaultsEmpty) {
+    const CheckResult check{"n", true, {}};
+    EXPECT_TRUE(check.requirement_id.empty());
+}
+
 TEST(TestRunner, FreshReportIsAPass) {
     LoopbackBus bus;
     const TestRunner runner{bus};

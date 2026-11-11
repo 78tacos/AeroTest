@@ -1,0 +1,28 @@
+# Synthetic engine node, with the reply dropped on purpose.
+# 512 is 0x200 (request), 513 is 0x201 (reply).
+# absent: true means a timeout is a pass. The drop fault is why the reply
+# never arrives. A Delay fault would need a wait step first; a drop does not.
+
+name: engine-drop
+description: A drop fault on the engine reply makes the expect pass by absence.
+bus: loopback
+subsystems:
+  - engine
+steps:
+  - name: drop the next reply
+    requirement: REQ-ENG-001
+    inject:
+      kind: drop
+      match_id: 513
+      remaining: 1
+  - name: request engine status
+    requirement: REQ-ENG-001
+    send:
+      id: 512
+      data: []
+  - name: reply must not arrive
+    requirement: REQ-ENG-001
+    expect:
+      id: 513
+      timeout_ms: 20
+      absent: true

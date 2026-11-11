@@ -13,10 +13,16 @@
 namespace aerotest {
 
 /// One named check. `detail` is empty when the check passed.
+///
+/// `requirement_id` is empty unless a scenario step filled it (step 2).
+/// Step 1's runner leaves it empty. It is the last field, with a default
+/// member initializer, so `CheckResult{"name", true, {}}` still compiles
+/// and does not trip `-Wmissing-field-initializers`.
 struct CheckResult {
     std::string name;
     bool passed{false};
     std::string detail;
+    std::string requirement_id{};
 };
 
 /// Sends a frame and checks what comes back. The bus must already be open.

@@ -20,8 +20,15 @@ add_executable(aerotest_tests
   socketcan_bus_test.cpp
   fault_injector_test.cpp
   test_runner_test.cpp
+  scenario_parser_test.cpp
+  subsystem_test.cpp
+  scenario_runner_test.cpp
+  results_writer_test.cpp
 )
 target_link_libraries(aerotest_tests PRIVATE aerotest::aerotest GTest::gtest_main)
+target_compile_definitions(aerotest_tests PRIVATE
+  "AEROTEST_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\""
+)
 aerotest_set_warnings(aerotest_tests)
 
 include(GoogleTest)
