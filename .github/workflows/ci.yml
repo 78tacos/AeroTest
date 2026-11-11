@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.preset }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [gcc-debug, clang-debug]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install compilers and Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake g++ clang
+          # Clang links with the newest GCC it detects. On Ubuntu 24.04 that
+          # can be newer than /usr/bin/g++, and the link then fails with
+          # "cannot find -lstdc++" until that GCC's -dev package is installed.
+          selected=$(clang++ -v 2>&1 | sed -n 's#.*Selected GCC installation: .*/\([0-9]*\)$#\1#p')
+          if [ -n "$selected" ]; then
+            sudo apt-get install -y "libstdc++-${selected}-dev"
+          fi
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        # The preset skips DISABLED_ tests and anything labeled needs-vcan.
+        run: ctest --preset ${{ matrix.preset }} --output-on-failure

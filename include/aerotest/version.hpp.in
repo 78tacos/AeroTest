@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Joseph Ogle
+
+#pragma once
+
+namespace aerotest {
+
+// Generated from project(VERSION) in the top-level CMakeLists.txt.
+// Do not edit the generated copy under the build directory.
+// clang-format off
+inline constexpr int kVersionMajor = @PROJECT_VERSION_MAJOR@;
+inline constexpr int kVersionMinor = @PROJECT_VERSION_MINOR@;
+inline constexpr int kVersionPatch = @PROJECT_VERSION_PATCH@;
+inline constexpr char kVersion[] = "@PROJECT_VERSION@";
+// clang-format on
+
+} // namespace aerotest
